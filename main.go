@@ -2,19 +2,21 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 )
 
 func main() {
-	// read key from stdin
-	input, err := ioutil.ReadAll(os.Stdin)
-	checkErr(err, "Cannot read key from stdin")
-	key := input[:len(input)-1]
-	if len(key) < 39 {
-		log.Fatal("The length of the key must be at least 40 bytes")
-	}
+	// find pwget
+	pwgetExe, err := exec.LookPath("pwget2")
+	failOnError(err, "Cannot find pwget on your system")
+
+	pwgetCmd := exec.Command(pwgetExe, os.Args[1:]...)
+	pwgetCmd.Stdin = os.Stdin
+	pwgetCmd.Stderr = os.Stderr
+	key, err := pwgetCmd.Output()
+	failOnError(err, "Could not run pwget")
 
 	// print passphrase
 	fmt.Printf("%s_%s_%s_%s\n",
@@ -24,8 +26,8 @@ func main() {
 		string(chooseWordFromList(nounsList, key[30:39])))
 }
 
-//checkErr prints MSG when ERR is not nil
-func checkErr(err error, msg string) {
+//failOnError prints MSG when ERR is not nil
+func failOnError(err error, msg string) {
 	if err != nil {
 		fmt.Println(msg)
 		log.Fatal(err)
@@ -36,7 +38,7 @@ func checkErr(err error, msg string) {
 func chooseWordFromList(list []string, seed []byte) string {
 	seedScalar := 0
 	for _, b := range seed {
-		seedScalar += int(b) //TODO evaluate this
+		seedScalar += int(b)
 	}
 	return list[seedScalar%len(list)]
 }

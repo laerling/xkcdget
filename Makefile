@@ -3,6 +3,7 @@
 EXE=xget
 
 $(EXE): $(wildcard *.go)
+	goimports -w $<
 	go build -o $(EXE)
 
 install: $(EXE)
