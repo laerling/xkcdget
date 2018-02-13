@@ -4,6 +4,7 @@
 *.so
 *.dylib
 main
+xkcdget
 
 # Test binary, build with `go test -c`
 *.test
