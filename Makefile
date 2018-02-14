@@ -1,4 +1,4 @@
-.PHONY: install clean
+.PHONY: install clean uninstall purge
 
 EXE=xget
 
@@ -10,4 +10,8 @@ install: $(EXE)
 
 clean:
 	rm -f $(EXE)
+
+uninstall:
 	rm -f /bin/$(EXE)
+
+purge: uninstall clean
