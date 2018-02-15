@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+
+	"github.com/tilinna/z85"
 )
 
 func main() {
@@ -36,9 +40,14 @@ func failOnError(err error, msg string) {
 
 //chooseWordFromList chooses a word from LIST, determined by SEED
 func chooseWordFromList(list []string, seed []byte) string {
-	seedScalar := 0
-	for _, b := range seed {
-		seedScalar += int(b)
-	}
-	return list[seedScalar%len(list)]
+	// decode 10 bytes (encoding 64 bits)
+	var scalarSeed [8]byte
+	_, err := z85.Decode(scalarSeed[:], seed)
+	failOnError(err, "Cannot decode slice of key")
+
+	// read decoded bytes into uint64
+	var intSeed uint64
+	binary.Read(bytes.NewReader(scalarSeed[:]), binary.LittleEndian, &intSeed)
+
+	return list[intSeed%uint64(len(list))]
 }
