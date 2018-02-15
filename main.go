@@ -23,11 +23,15 @@ func main() {
 	failOnError(err, "Could not run pwget")
 
 	// print passphrase
-	fmt.Printf("%s_%s_%s_%s\n",
-		string(chooseWordFromList(adjectivesList, key[0:9])),
-		string(chooseWordFromList(nounsList, key[10:19])),
-		string(chooseWordFromList(verbsList, key[20:29])),
-		string(chooseWordFromList(nounsList, key[30:39])))
+	fmt.Printf("%s_%s_%s_%s",
+		string(chooseWordFromList(adjectivesList, key[0:10])),
+		string(chooseWordFromList(nounsList, key[10:20])),
+		string(chooseWordFromList(verbsList, key[20:30])),
+		string(chooseWordFromList(nounsList, key[30:40])))
+
+	//write the newline on stderr only, so that it is not copied when
+	//piping stdout to xsel or xclip
+	os.Stderr.Write([]byte("\n"))
 }
 
 //failOnError prints MSG when ERR is not nil
