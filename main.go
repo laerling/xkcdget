@@ -13,14 +13,15 @@ import (
 
 func main() {
 	// find pwget
-	pwgetExe, err := exec.LookPath("pwget2")
-	failOnError(err, "Cannot find pwget on your system")
+	pwgetName := "pwget2"
+	pwgetExe, err := exec.LookPath(pwgetName)
+	failOnError(err, "Finding " + pwgetName + " on your system failed")
 
 	pwgetCmd := exec.Command(pwgetExe, os.Args[1:]...)
 	pwgetCmd.Stdin = os.Stdin
 	pwgetCmd.Stderr = os.Stderr
 	key, err := pwgetCmd.Output()
-	failOnError(err, "Could not run pwget")
+	failOnError(err, "Running pwget failed")
 
 	// print passphrase
 	fmt.Printf("%s_%s_%s_%s",

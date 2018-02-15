@@ -10,3 +10,11 @@ The only password you really need to remember from now on is the master password
 ## The word lists
 
 The word lists originate from [here (adjectives)](http://www.talkenglish.com/vocabulary/top-500-adjectives.aspx), [here (nouns)](http://www.talkenglish.com/vocabulary/top-1500-nouns.aspx), and [here (verbs)](http://www.talkenglish.com/vocabulary/top-1000-verbs.aspx).
+
+## Disclaimer
+
+The word lists are only so long. Their current use yields an entropy of `log(528*1525*1011*1525)/log(2) = 40.17514845593669 bit`
+That is of course far less entropy than 256 bit, which is what pwget produces.
+
+I'm writing this pwget frontend for my own use, and I personally prefer easy memorization to high entropy.
+If you are in desperate need of entropy, fork this repo and replace the wordlists with your own (I recommend the [english aspell dictionary](http://ftp.gnu.org/gnu/aspell/dict/0index.html)) or increase the number of used words.
