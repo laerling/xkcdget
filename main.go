@@ -7,15 +7,16 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/tilinna/z85"
 )
 
 func main() {
 	// find pwget
-	pwgetName := "pwget2"
+	pwgetName := "pwget"
 	pwgetExe, err := exec.LookPath(pwgetName)
-	failOnError(err, "Finding " + pwgetName + " on your system failed")
+	failOnError(err, "Finding "+pwgetName+" on your system failed")
 
 	pwgetCmd := exec.Command(pwgetExe, os.Args[1:]...)
 	pwgetCmd.Stdin = os.Stdin
@@ -24,11 +25,11 @@ func main() {
 	failOnError(err, "Running pwget failed")
 
 	// print passphrase
-	fmt.Printf("%s_%s_%s_%s",
-		string(chooseWordFromList(adjectivesList, key[0:10])),
-		string(chooseWordFromList(nounsList, key[10:20])),
-		string(chooseWordFromList(verbsList, key[20:30])),
-		string(chooseWordFromList(nounsList, key[30:40])))
+	fmt.Printf("%s%s%s%s_1",
+		strings.Title(string(chooseWordFromList(adjectivesList, key[0:10]))),
+		strings.Title(string(chooseWordFromList(nounsList, key[10:20]))),
+		strings.Title(string(chooseWordFromList(verbsList, key[20:30]))),
+		strings.Title(string(chooseWordFromList(nounsList, key[30:40]))))
 
 	//write the newline on stderr only, so that it is not copied when
 	//piping stdout to xsel or xclip
