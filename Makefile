@@ -1,12 +1,15 @@
 .PHONY: install clean uninstall purge
 
-EXE=xget
+EXE=xkcdget
 
 $(EXE): $(wildcard *.go)
-	goimports -w $<
+	if [ -x /usr/bin/goimports ]; then goimports -w $<; fi
+	go get
 	go build -o $(EXE)
 
-install: $(EXE)
+install: /bin/$(EXE)
+
+/bin/$(EXE):
 	install -m 0755 $(EXE) /bin/$(EXE)
 
 clean:
