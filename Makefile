@@ -1,21 +1,29 @@
-.PHONY: install clean uninstall purge
+.PHONY: install dependencies clean uninstall purge
 
 EXE=xkcdget
 
-$(EXE): $(wildcard *.go)
-	if [ -x /usr/bin/goimports ]; then goimports -w $<; fi
+$(EXE): $(wildcard *.go) dependencies
+	if [ -x /usr/bin/goimports ]; then goimports -w "$<"; fi
 	go get
-	go build -o $(EXE)
+	go build -o "$(EXE)"
+	go install
 
-install: /bin/$(EXE)
+dependencies: "$(GOPATH)/src/github.com/majewsky/pwget"
 
-/bin/$(EXE):
-	install -m 0755 $(EXE) /bin/$(EXE)
+"$(GOPATH)/src/github.com/majewsky/pwget":
+	go get "github.com/majewsky/pwget"
+	cd "$@"; make
+
+install: /bin/"$(EXE)"
+
+/bin/"$(EXE)":
+	install -m 0755 "$(EXE)" /bin/"$(EXE)"
 
 clean:
-	rm -f $(EXE)
+	rm -f "$(EXE)"
 
 uninstall:
-	rm -f /bin/$(EXE)
+	rm -f "/bin/$(EXE)"
+	rm -f "$(GOPATH)/bin/$(EXE)"
 
 purge: uninstall clean
