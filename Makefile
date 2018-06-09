@@ -1,4 +1,4 @@
-.PHONY: install dependencies clean uninstall purge
+.PHONY: gopath install dependencies clean uninstall purge
 
 EXE=xkcdget
 
@@ -10,20 +10,24 @@ $(EXE): $(wildcard *.go) dependencies
 
 dependencies: "$(GOPATH)/src/github.com/majewsky/pwget"
 
-"$(GOPATH)/src/github.com/majewsky/pwget":
+"$(GOPATH)/src/github.com/majewsky/pwget": gopath
 	go get "github.com/majewsky/pwget"
-	cd "$@"; make
+	cd $@; make
 
-install: /bin/"$(EXE)"
+install: "/bin/$(EXE)"
 
-/bin/"$(EXE)":
-	install -m 0755 "$(EXE)" /bin/"$(EXE)"
+"/bin/$(EXE)":
+	sudo -E install -m 0755 "$(GOPATH)/bin/$(EXE)" $@
 
 clean:
 	rm -f "$(EXE)"
 
 uninstall:
-	rm -f "/bin/$(EXE)"
-	rm -f "$(GOPATH)/bin/$(EXE)"
+	sudo -E rm -f "/bin/$(EXE)"
+	# gopath is no dep of this target because empty gopath is effectively the same as /bin/$(EXE)
+	sudo -E rm -f "$(GOPATH)/bin/$(EXE)"
 
 purge: uninstall clean
+
+gopath:
+	if [ -z "$(GOPATH)" ]; then exit 1; fi
