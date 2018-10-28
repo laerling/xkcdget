@@ -20,8 +20,7 @@ clean:
 	rm -f "$(EXE)"
 
 uninstall: gopath
-	sudo -E rm -f "/bin/$(EXE)"
-	sudo -E rm -f "$(GOPATH)/bin/$(EXE)"
+	rm -f "$(GOPATH)/bin/$(EXE)"
 
 purge: uninstall clean
 
