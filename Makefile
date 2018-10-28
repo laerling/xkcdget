@@ -12,11 +12,11 @@ dependencies: "$(GOPATH)/src/github.com/majewsky/pwget"
 
 "$(GOPATH)/src/github.com/majewsky/pwget": gopath
 	go get "github.com/majewsky/pwget"
-	cd $@; make
+	cd "$@"; make
 
-install: "/bin/$(EXE)"
+install: /bin/"$(EXE)"
 
-"/bin/$(EXE)":
+/bin/"$(EXE)":
 	sudo -E install -m 0755 "$(GOPATH)/bin/$(EXE)" $@
 
 clean:
