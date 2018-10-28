@@ -30,10 +30,10 @@ func main() {
 
 	// print passphrase
 	fmt.Printf("%s%s%s%s_1",
-		strings.Title(string(chooseWordFromList(adjectivesList, key[0:10]))),
-		strings.Title(string(chooseWordFromList(nounsList, key[10:20]))),
-		strings.Title(string(chooseWordFromList(verbsList, key[20:30]))),
-		strings.Title(string(chooseWordFromList(nounsList, key[30:40]))))
+		strings.Title(string(chooseWordFromList(list, key[0:10]))),
+		strings.Title(string(chooseWordFromList(list, key[10:20]))),
+		strings.Title(string(chooseWordFromList(list, key[20:30]))),
+		strings.Title(string(chooseWordFromList(list, key[30:40]))))
 
 	//write the newline on stderr only, so that it is not copied when
 	//piping stdout to xsel or xclip
