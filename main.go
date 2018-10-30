@@ -13,6 +13,9 @@ import (
 )
 
 func main() {
+	// print commit of build
+	fmt.Println("Build commit: ", buildCommit())
+
 	// find pwget
 	pwgetName := "pwget"
 	pwgetExe, err := exec.LookPath(pwgetName)
