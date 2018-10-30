@@ -13,7 +13,9 @@ clean_index:
 
 git_head: .git/HEAD
 	echo -e "package main\nfunc buildCommit() string {" \
-		"return \"$(shell cat .git/$(shell grep -o 'refs/.\+' $<))\"" \
+		"return \"$(shell grep -o '[^/]\+$$' $<) at" \
+		"$(shell head -c8 .git/$(shell grep -o 'refs/.\+' $<)):" \
+		"$(shell head -1 .git/COMMIT_EDITMSG)\"" \
 		"}" > $@.go
 
 $(EXE): $(wildcard *.go)
