@@ -15,9 +15,7 @@ git_head: .git/HEAD
 	# We use the fifth line of `git log` for the commit message, because .git/COMMIT_EDITMSG is unreliable:
 	# It does not show merge commits and it's empty if the last `git commit` was aborted
 	echo -e "package main\nfunc buildCommit() string {" \
-		"return \"$$(grep -o '[^/]\+$$' $<) at" \
-		"$$(git log|head -c15):" \
-		"$$(git log|head -6|grep -A2 '^Date'|tail -1|tail -c+5)\"" \
+		"return \"$$(git describe --all --long)\"" \
 		"}" > $@.go
 
 $(EXE): $(wildcard *.go)
