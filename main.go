@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// print commit of build
-	fmt.Println("Build from", buildCommit())
+	fmt.Println("Built from", buildCommit())
 
 	// find pwget
 	pwgetName := "pwget"
