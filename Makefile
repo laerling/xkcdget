@@ -17,7 +17,7 @@ git_head: .git/HEAD
 	echo -e "package main\nfunc buildCommit() string {" \
 		"return \"$(shell grep -o '[^/]\+$$' $<) at" \
 		"$(shell git log|head -c15):" \
-		"$(shell git log|head -5|tail -1|tail -c+5)\"" \
+		"$(shell git log|head -6|grep -A2 '^Date'|tail -1|tail -c+5)\"" \
 		"}" > $@.go
 
 $(EXE): $(wildcard *.go)
