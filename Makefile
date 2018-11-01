@@ -1,21 +1,13 @@
-.PHONY:  gopath  clean_index git_head  install dependencies  clean uninstall purge
+.PHONY:  gopath  git_head  install dependencies  clean uninstall purge
 
 EXE=xkcdget
 
-install: clean_index git_head gopath dependencies $(EXE)
+install: git_head gopath dependencies $(EXE)
 	go install
 
-clean_index:
-	@if ! (git status|grep -q "working tree clean"); then \
-		echo "Working tree not clean. Commit changes before building!" 1>&2; \
-		exit 1; \
-	fi;
-
-git_head: .git/HEAD
-	# We use the fifth line of `git log` for the commit message, because .git/COMMIT_EDITMSG is unreliable:
-	# It does not show merge commits and it's empty if the last `git commit` was aborted
+git_head:
 	echo -e "package main\nfunc buildCommit() string {" \
-		"return \"$$(git describe --all --long)\"" \
+		"return \"$$(git describe --all --long --dirty)\"" \
 		"}" > $@.go
 
 $(EXE): $(wildcard *.go)
