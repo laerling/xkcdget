@@ -14,7 +14,8 @@ import (
 
 func main() {
 	// print commit of build
-	fmt.Println("Build:", buildCommit())
+	// print to stderr so that it doesn't get piped into xsel
+	os.Stderr.Write([]byte("xkcdget build: " + buildCommit() + "\n"))
 
 	// find pwget
 	pwgetName := "pwget"
