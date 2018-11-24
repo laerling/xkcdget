@@ -6,7 +6,7 @@ install: git_head gopath dependencies $(EXE)
 	go install
 
 git_head:
-	echo -e "package main\nfunc buildCommit() string {" \
+	echo "package main\nfunc buildCommit() string {" \
 		"return \"$$(git describe --all --long --dirty)\"" \
 		"}" > $@.go
 
@@ -17,7 +17,7 @@ $(EXE): $(wildcard *.go)
 
 dependencies: "$(GOPATH)/src/github.com/majewsky/pwget"
 "$(GOPATH)/src/github.com/majewsky/pwget": gopath
-	go get "github.com/majewsky/pwget"
+	go get -u "github.com/majewsky/pwget"
 	cd $@; make # the path is already in "" so we don't need them here
 
 
