@@ -6,7 +6,7 @@ install: git_head gopath dependencies $(EXE)
 	go install
 
 git_head:
-	echo "package main\nfunc buildCommit() string {" \
+	echo -e "package main\nfunc buildCommit() string {" \
 		"return \"$$(git describe --all --long --dirty)\"" \
 		"}" > $@.go
 
