@@ -1,6 +1,6 @@
 .PHONY:  gopath  git_head  install dependencies  clean uninstall purge
 
-EXE=xkcdget
+EXE=xkcdget.legacy
 
 install: git_head gopath dependencies $(EXE)
 	go install
