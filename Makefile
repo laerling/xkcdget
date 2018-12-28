@@ -6,9 +6,7 @@ install: git_head gopath dependencies $(EXE)
 	go install
 
 git_head:
-	echo -e "package main\nfunc buildCommit() string {" \
-		"return \"$$(git describe --all --long --dirty)\"" \
-		"}" > $@.go
+	printf "package main\nfunc buildCommit() string { return \"$$(git describe --all --long --dirty)\" }" > $@.go
 
 $(EXE): $(wildcard *.go)
 	if [ -x /usr/bin/goimports ]; then goimports -w "$<"; fi
