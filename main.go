@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/tilinna/z85"
@@ -14,7 +15,7 @@ import (
 
 func main() {
 	// print commit of build
-	// print to stderr so that it doesn't get piped into xsel
+	// write to stderr so that it doesn't get piped into xsel
 	os.Stderr.Write([]byte("xkcdget build: " + buildCommit() + "\n"))
 
 	// find pwget
@@ -22,6 +23,15 @@ func main() {
 	pwgetExe, err := exec.LookPath(pwgetName)
 	failOnError(err, "Finding "+pwgetName+" on your system failed")
 
+	// check revocation list
+	revList := path.Join(os.Getenv("HOME"), ".pwget2-revocation")
+	if _, err = os.Stat(revList); err != nil {
+		// warn user (on stderr so it doesn't get piped into xsel)
+		os.Stderr.Write([]byte("Warning: Revocation list missing or not readable" +
+			" (expected in " + revList + ")\n"))
+	}
+
+	// call pwget
 	pwgetCmd := exec.Command(pwgetExe, os.Args[1:]...)
 	pwgetCmd.Stdin = os.Stdin
 	pwgetCmd.Stderr = os.Stderr
