@@ -25,16 +25,10 @@ func main() {
 
 	// check revocation list
 	revList := path.Join(os.Getenv("HOME"), ".pwget2-revocation")
-	_, err = os.Stat(revList)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// warn user (on stderr so it doesn't get piped into xsel)
-			os.Stderr.Write([]byte("Warning: Revocation list list not found" +
-				" (expected in " + revList + ")\n"))
-		} else {
-			// fail only if stat failed but revocation list file is present
-			panic(err)
-		}
+	if _, err = os.Stat(revList); err != nil {
+		// warn user (on stderr so it doesn't get piped into xsel)
+		os.Stderr.Write([]byte("Warning: Revocation list missing or not readable" +
+			" (expected in " + revList + ")\n"))
 	}
 
 	// call pwget
