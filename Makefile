@@ -3,14 +3,17 @@
 EXE=xkcdget.legacy
 
 install: git_head gopath dependencies $(EXE)
-	go install
+	# We can't use go install, because it would overwrite the xkcdget binary.
+	# Apparently it names the resulting executable after the package (the
+	# directory name), not after the binary produced by go build.
+	mv -f $(EXE) "$(GOPATH)/bin/"
 
 git_head:
 	printf "package main\nfunc buildCommit() string { return \"$$(git describe --all --long --dirty)\" }" > $@.go
 
 $(EXE): $(wildcard *.go)
 	if [ -x /usr/bin/goimports ]; then goimports -w "$<"; fi
-	go get
+	#Don't run go get, because that installs xkcdget.legacy as xkcdget
 	go build -o "$(EXE)"
 
 dependencies: "$(GOPATH)/src/github.com/majewsky/pwget"

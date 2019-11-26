@@ -11,7 +11,7 @@ git_head.go
 *.so
 *.dylib
 main
-xkcdget
+xkcdget.legacy
 xget
 
 # Test binary, build with `go test -c`
