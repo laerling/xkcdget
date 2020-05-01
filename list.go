@@ -1999,7 +1999,7 @@ var list = []string{
 	"watch",
 	"water",
 	"wave",
-	"wayf",
+	"way",
 	"weak",
 	"weakness",
 	"wealth",
