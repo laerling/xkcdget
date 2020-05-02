@@ -1,6 +1,9 @@
-.PHONY:  gopath  git_head  install dependencies  clean uninstall purge
+.PHONY:  gopath  git_head  install dependencies test  clean uninstall purge
 
 EXE=xkcdget
+
+test: ./test.sh install
+	./test.sh $(GOPATH)/bin/$(EXE) || exit 1
 
 install: git_head gopath dependencies $(EXE)
 	go install
@@ -17,7 +20,6 @@ dependencies: "$(GOPATH)/src/github.com/majewsky/pwget"
 "$(GOPATH)/src/github.com/majewsky/pwget": gopath
 	go get -u "github.com/majewsky/pwget"
 	cd $@; make # the path is already in "" so we don't need them here
-
 
 clean:
 	rm -f "$(EXE)" git_head.go
