@@ -6,6 +6,12 @@ BIN="$1"
 echo
 echo "Running acceptance test on binary $BIN"
 
+function call_xkcdget {
+    cmd="echo -n $password|$BIN $@ $domain"
+    echo "Execute: $cmd"
+    xkcdget_output=$(eval "$cmd")
+}
+
 function assertEquals {
     expected="$1"
     actual="$2"
@@ -39,24 +45,27 @@ true > "$revlist"
 trap restore ERR
 echo
 
+password='password'
+domain='domain'
+
 
 echo "Acceptance test 1: Basic functionality"
 expected="MindDisappointedDoctorAssure_1"
-actual=$(echo -n 'password'|"$BIN" 'domain')
-assertEquals "$expected" "$actual"
+call_xkcdget
+assertEquals "$expected" "$xkcdget_output"
 
 
 echo "Acceptance test 2: Revocation"
 
 echo "Acceptance test 2.1: Short argument"
-echo -n 'password'|"$BIN" -r 'domain'
+call_xkcdget '-r'
 expected=':&a*5wnoz{0tUw#9U}+!s7qdGlqGo9XhHURZz>r1'
 actual=$(tail -1 "$revlist")
 assertEquals "$expected" "$actual"
 
-echo "Acceptance test 2.2: Long argument"
-echo -n 'password'|"$BIN" --revoke 'other_domain'
-expected='x@msMJyU6}VRgcUt(+W+85e$bM^%RJzS/}R7D&9d'
+echo "Acceptance test 2.2: Long argument and double revocation"
+call_xkcdget '--revoke'
+expected='([Z>a9^-KV)T&]R(MH41ykWS>JxWBKIu^Nyhxg{)'
 actual=$(tail -1 "$revlist")
 assertEquals "$expected" "$actual"
 
