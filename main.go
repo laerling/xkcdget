@@ -54,8 +54,15 @@ func main() {
 	pwgetCmd := exec.Command(pwgetExe, os.Args[1:]...)
 	pwgetCmd.Stdin = os.Stdin
 	pwgetCmd.Stderr = os.Stderr
+
+	// grab output
 	key, err := pwgetCmd.Output()
 	failOnError(err, "Running pwget failed")
+
+	// exit if pwget was called for revocation
+	if os.Args[1] == "-r" || os.Args[1] == "--revoke" {
+		os.Exit(0)
+	}
 
 	// print passphrase
 	fmt.Printf("%s%s%s%s_1",
