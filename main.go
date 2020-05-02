@@ -20,6 +20,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -50,18 +51,48 @@ func main() {
 			" (expected in " + revList + ")\n"))
 	}
 
-	// call pwget
-	pwgetCmd := exec.Command(pwgetExe, os.Args[1:]...)
-	pwgetCmd.Stdin = os.Stdin
-	pwgetCmd.Stderr = os.Stderr
+	// ask for domain if not provided on command line
+	args := os.Args[1:]
+	domainProvided := false
+	for _, arg := range args {
+		if arg[0] != '-' {
+			domainProvided = true
+			break
+		}
+	}
+	stdinReader := bufio.NewReader(os.Stdin)
+	if !domainProvided {
+		os.Stderr.Write([]byte("Domain: "))
 
-	// grab output
+		domain, err := stdinReader.ReadString('\n')
+		// remove trailing newline
+		domain = strings.Trim(domain, "\n")
+		failOnError(err, "Cannot get domain from stdin")
+
+		// prepend domain to arguments
+		args = make([]string, 0, len(os.Args))
+		args = append(args, domain)
+		if len(os.Args) > 1 {
+			args = append(args, os.Args[1:]...)
+		}
+	}
+
+	// call pwget
+	pwgetCmd := exec.Command(pwgetExe, args...)
+	if domainProvided {
+		pwgetCmd.Stdin = os.Stdin
+	} else {
+		pwgetCmd.Stdin = stdinReader
+	}
+	pwgetCmd.Stderr = os.Stderr
 	key, err := pwgetCmd.Output()
 	failOnError(err, "Running pwget failed")
 
 	// exit if pwget was called for revocation
-	if os.Args[1] == "-r" || os.Args[1] == "--revoke" {
-		os.Exit(0)
+	for _, arg := range args {
+		if arg == "-r" || arg == "--revoke" {
+			os.Exit(0)
+		}
 	}
 
 	// print passphrase

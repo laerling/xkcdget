@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BIN="$1"
+BIN="${1:-xkcdget}"
 echo
 echo "Running acceptance test on binary $BIN"
 
@@ -43,26 +43,38 @@ true > "$revlist"
 #########
 
 trap restore ERR
-echo
 
 password='password'
 domain='domain'
 
 
+echo
 echo "Acceptance test 1: Basic functionality"
+
+echo
+echo "Acceptance test 1.1: Supply domain via argument"
 expected="MindDisappointedDoctorAssure_1"
 call_xkcdget
 assertEquals "$expected" "$xkcdget_output"
 
+echo
+echo "Acceptance test 1.2: Supply domain via interactive input"
+expected="MindDisappointedDoctorAssure_1"
+xkcdget_output=$(echo -en "$domain\n$password"|"$BIN")
+assertEquals "$expected" "$xkcdget_output"
 
+
+echo
 echo "Acceptance test 2: Revocation"
 
+echo
 echo "Acceptance test 2.1: Short argument"
 call_xkcdget '-r'
 expected=':&a*5wnoz{0tUw#9U}+!s7qdGlqGo9XhHURZz>r1'
 actual=$(tail -1 "$revlist")
 assertEquals "$expected" "$actual"
 
+echo
 echo "Acceptance test 2.2: Long argument and double revocation"
 call_xkcdget '--revoke'
 expected='([Z>a9^-KV)T&]R(MH41ykWS>JxWBKIu^Nyhxg{)'
