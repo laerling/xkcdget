@@ -57,14 +57,12 @@ expected="MindDisappointedDoctorAssure_1"
 call_xkcdget
 assertEquals "$expected" "$xkcdget_output"
 
-echo
 echo "Acceptance test 1.2: Supply domain via interactive input"
 expected="MindDisappointedDoctorAssure_1"
 xkcdget_output=$(echo -en "$domain\n$password"|"$BIN")
 assertEquals "$expected" "$xkcdget_output"
 
 
-echo
 echo "Acceptance test 2: Revocation"
 
 echo
@@ -82,9 +80,12 @@ actual=$(tail -1 "$revlist")
 assertEquals "$expected" "$actual"
 
 
+echo
+echo
 
 ###########
 # restore #
 ###########
 
 restore
+echo
