@@ -29,8 +29,10 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/tilinna/z85"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func main() {
@@ -53,16 +55,18 @@ func main() {
 
 	// ask for domain if not provided on command line
 	args := os.Args[1:]
-	domainProvided := false
+	domainArgProvided := false
 	for _, arg := range args {
 		if arg[0] != '-' {
-			domainProvided = true
+			domainArgProvided = true
 			break
 		}
 	}
 	stdinReader := bufio.NewReader(os.Stdin)
-	if !domainProvided {
-		os.Stderr.Write([]byte("Domain: "))
+	if !domainArgProvided {
+		if terminal.IsTerminal(int(syscall.Stdin)) {
+			os.Stderr.Write([]byte("Domain: "))
+		}
 
 		domain, err := stdinReader.ReadString('\n')
 		// remove trailing newline
@@ -79,7 +83,7 @@ func main() {
 
 	// call pwget
 	pwgetCmd := exec.Command(pwgetExe, args...)
-	if domainProvided {
+	if terminal.IsTerminal(int(syscall.Stdin)) {
 		pwgetCmd.Stdin = os.Stdin
 	} else {
 		pwgetCmd.Stdin = stdinReader
