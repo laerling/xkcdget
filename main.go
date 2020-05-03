@@ -1,15 +1,38 @@
+/*******************************************************************************
+*
+* Copyright 2019 laerling <laerling@posteo.de>
+*
+* This program is free software: you can redistribute it and/or modify it under
+* the terms of the GNU General Public License as published by the Free Software
+* Foundation, either version 3 of the License, or (at your option) any later
+* version.
+*
+* This program is distributed in the hope that it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+* FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+* details.
+*
+* You should have received a copy of the GNU General Public License along with
+* this program. If not, see <http://www.gnu.org/licenses/>.
+*
+*******************************************************************************/
+
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
+	"syscall"
 
 	"github.com/tilinna/z85"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func main() {
@@ -22,11 +45,59 @@ func main() {
 	pwgetExe, err := exec.LookPath(pwgetName)
 	failOnError(err, "Finding "+pwgetName+" on your system failed")
 
-	pwgetCmd := exec.Command(pwgetExe, os.Args[1:]...)
-	pwgetCmd.Stdin = os.Stdin
+	// check revocation list
+	revList := path.Join(os.Getenv("HOME"), ".pwget2-revocation")
+	if _, err = os.Stat(revList); err != nil {
+		// warn user (on stderr so it doesn't get piped into xsel)
+		os.Stderr.Write([]byte("Warning: Revocation list missing or not readable" +
+			" (expected in " + revList + ")\n"))
+	}
+
+	// ask for domain if not provided on command line
+	args := os.Args[1:]
+	domainArgProvided := false
+	for _, arg := range args {
+		if arg[0] != '-' {
+			domainArgProvided = true
+			break
+		}
+	}
+	stdinReader := bufio.NewReader(os.Stdin)
+	if !domainArgProvided {
+		if terminal.IsTerminal(int(syscall.Stdin)) {
+			os.Stderr.Write([]byte("Domain: "))
+		}
+
+		domain, err := stdinReader.ReadString('\n')
+		// remove trailing newline
+		domain = strings.Trim(domain, "\n")
+		failOnError(err, "Cannot get domain from stdin")
+
+		// prepend domain to arguments
+		args = make([]string, 0, len(os.Args))
+		args = append(args, domain)
+		if len(os.Args) > 1 {
+			args = append(args, os.Args[1:]...)
+		}
+	}
+
+	// call pwget
+	pwgetCmd := exec.Command(pwgetExe, args...)
+	if terminal.IsTerminal(int(syscall.Stdin)) {
+		pwgetCmd.Stdin = os.Stdin
+	} else {
+		pwgetCmd.Stdin = stdinReader
+	}
 	pwgetCmd.Stderr = os.Stderr
 	key, err := pwgetCmd.Output()
 	failOnError(err, "Running pwget failed")
+
+	// exit if pwget was called for revocation
+	for _, arg := range args {
+		if arg == "-r" || arg == "--revoke" {
+			os.Exit(0)
+		}
+	}
 
 	// print passphrase
 	fmt.Printf("%s%s%s%s_1",

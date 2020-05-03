@@ -2,7 +2,7 @@
 [pwget](https://github.com/majewsky/pwget) frontend for humans, implementing the [xkcd scheme](https://xkcd.com/936/).
 This makes it possible to remember a password better and transcribe it from one screen to another more easily.
 
-Thus, you can finally use pwget for operating system login credentials too! Bonus: When you forget your login password you can retrieve it with an arbitrary machine that has pwget installed. With an appropriate terminal (e. g. [Termux](https://termux.com/)) you can even use xkcdget on your phone to retrieve your passwords anywhere.
+Thus, you can finally use pwget for operating system login credentials too! Bonus: When you forget your login password you can retrieve it with an arbitrary machine that has xkcdget installed. With an appropriate terminal (e.&nbsp;g. [Termux](https://termux.com/) on Android) you can even use xkcdget on your phone to retrieve your passwords anywhere.
 The only password you need to remember from now on is the master password.
 
 Passwords consist of four words, concatenated camel-case style, suffixed by '\_1'. This makes most password prompts happy, since it contains upper-case, lower-case, digits, and special characters.
