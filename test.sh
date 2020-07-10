@@ -30,8 +30,14 @@ function restore {
 # since it can be a symlink, don't use cp, but shell redirection
 revlist=~/.pwget2-revocation
 revlistbackup=$(mktemp)
-echo "Backing up $revlist to $revlistbackup"
-cat "$revlist" > "$revlistbackup"
+revlistexisted=
+if [ -e "$revlist" ]; then
+    revlistexisted=yes
+    echo "Backing up $revlist to $revlistbackup"
+    cat "$revlist" > "$revlistbackup"
+else
+    echo "No revocation list found. Continuing without backup"
+fi
 
 # empty revocation list
 true > "$revlist"
@@ -87,5 +93,10 @@ echo
 # restore #
 ###########
 
-restore
+if [ "$revlistexisted" ]; then
+    restore
+else
+    echo "Deleting temporary revocation list"
+    rm "$revlist"
+fi
 echo
