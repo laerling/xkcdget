@@ -16,12 +16,12 @@ git_head:
 
 $(EXE): $(wildcard *.go)
 	if [ -x /usr/bin/goimports ]; then goimports -w "$<"; fi
-	#Don't run go get, because that installs xkcdget.legacy as xkcdget
+	go mod tidy
 	go build -o "$(EXE)"
 
-dependencies: "$(GOPATH)/src/github.com/majewsky/pwget"
+dependencies:
 "$(GOPATH)/src/github.com/majewsky/pwget": check_gopath
-	go get -u "github.com/majewsky/pwget"
+	go install "github.com/majewsky/pwget"@latest
 	cd $@; make # the path is already in "" so we don't need them here
 
 clean:
