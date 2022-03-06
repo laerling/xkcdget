@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/tilinna/z85 v1.0.0
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 )
 
 require (

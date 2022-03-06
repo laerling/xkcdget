@@ -36,9 +36,11 @@ import (
 )
 
 func main() {
+        version := "2.0.0"
+
 	// print commit of build
 	// write to stderr so that it doesn't get piped into xsel
-	os.Stderr.Write([]byte("xkcdget build: " + buildCommit() + "\n"))
+	os.Stderr.Write([]byte("xkcdget " + version + "\n"))
 
 	// find pwget
 	pwgetName := "pwget"
