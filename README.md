@@ -8,9 +8,9 @@ The only password you need to remember from now on is the master password.
 Passwords consist of four words, concatenated camel-case style, suffixed by '\_1'. This makes most password prompts happy, since it contains upper-case, lower-case, digits, and special characters.
 *Tip*: Remember a generated password like `CreativeBallSeeAuthor_1` by thinking it as a sentence; `The creative ball sees the author.` This pseudo-sentence makes a bit more sense than four arbitrary words in a row and can easily be imagined visually.
 
-## The word lists
+## The word list
 
-The word lists originate from [here (adjectives)](http://www.talkenglish.com/vocabulary/top-500-adjectives.aspx), [here (nouns)](http://www.talkenglish.com/vocabulary/top-1500-nouns.aspx), and [here (verbs)](http://www.talkenglish.com/vocabulary/top-1000-verbs.aspx).
+The word list originates from [here (adjectives)](http://www.talkenglish.com/vocabulary/top-500-adjectives.aspx), [here (nouns)](http://www.talkenglish.com/vocabulary/top-1500-nouns.aspx), and [here (verbs)](http://www.talkenglish.com/vocabulary/top-1000-verbs.aspx).
 
 ## Disclaimer
 
