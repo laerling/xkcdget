@@ -103,10 +103,10 @@ func main() {
 
 	// print passphrase
 	fmt.Printf("%s%s%s%s_1",
-		strings.Title(string(chooseWordFromList(list, key[0:10]))),
-		strings.Title(string(chooseWordFromList(list, key[10:20]))),
-		strings.Title(string(chooseWordFromList(list, key[20:30]))),
-		strings.Title(string(chooseWordFromList(list, key[30:40]))))
+		strings.Title(string(chooseWordFromList(list, key, 0))),
+		strings.Title(string(chooseWordFromList(list, key, 1))),
+		strings.Title(string(chooseWordFromList(list, key, 2))),
+		strings.Title(string(chooseWordFromList(list, key, 3))))
 
 	//write the newline on stderr only, so that it is not copied when
 	//piping stdout to xsel or xclip
@@ -121,16 +121,21 @@ func failOnError(err error, msg string) {
 	}
 }
 
-//chooseWordFromList chooses a word from LIST, determined by SEED
-func chooseWordFromList(list []string, seed []byte) string {
-	// decode 10 bytes (encoding 64 bits)
-	var scalarSeed [8]byte
-	_, err := z85.Decode(scalarSeed[:], seed)
-	failOnError(err, "Cannot decode slice of key")
+//chooseWordFromList chooses a word from LIST, determined by KEY
+func chooseWordFromList(list []string, z85key []byte, word_offset uint32) string {
+
+	// calculate char offset from word_offset
+	offset := 10 * word_offset
+
+	// z85 consumes 5 bytes at a time and decodes them into 4 bytes (32 bits)
+	// decode 64 bits
+	var key [10]byte
+	_, err := z85.Decode(key[:], z85key[offset:offset+10])
+	failOnError(err, "Cannot decode z85-encoded key for choosing from word list")
 
 	// read decoded bytes into uint64
-	var intSeed uint64
-	binary.Read(bytes.NewReader(scalarSeed[:]), binary.LittleEndian, &intSeed)
+	var intKey uint64
+	binary.Read(bytes.NewReader(key[:]), binary.LittleEndian, &intKey)
 
-	return list[intSeed%uint64(len(list))]
+	return list[intKey % uint64(len(list))]
 }
