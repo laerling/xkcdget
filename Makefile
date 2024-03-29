@@ -1,27 +1,23 @@
-.PHONY:  test install dependencies  clean uninstall purge
-
 EXE=xkcdget
+INSTALL_DIR=~/bin
 
-test: ./test.sh install
-	./test.sh $(GOPATH)/bin/$(EXE) || exit 1
+.PHONY: $(EXE) test install clean uninstall purge
 
-install: dependencies $(EXE)
-	go install
+test: ./test.sh target/release/$(EXE)
+	./test.sh target/release/$(EXE) || exit 1
 
-$(EXE): $(wildcard *.go)
-	if [ -x /usr/bin/goimports ]; then goimports -w "$<"; fi
-	go mod tidy
-	go build -o "$(EXE)"
+install: target/release/$(EXE)
+	mkdir -p ~/bin
+	cp $< ~/bin/
 
-dependencies:
-"$(GOPATH)/src/github.com/majewsky/pwget":
-	go install "github.com/majewsky/pwget"@latest
-	cd $@; make # the path is already in "" so we don't need them here
+target/release/$(EXE): $(wildcard src/*.rs)
+	./version-update-reminder.sh
+	cargo build --release
 
 clean:
-	rm -f "$(EXE)"
+	rm -rf target
 
 uninstall:
-	rm -f "$(GOPATH)/bin/$(EXE)"
+	rm -f $(INSTALL_DIR)/$(EXE)
 
 purge: uninstall clean

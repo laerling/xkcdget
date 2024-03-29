@@ -72,14 +72,14 @@ assertEquals "$expected" "$xkcdget_output"
 echo "Acceptance test 2: Revocation"
 
 echo
-echo "Acceptance test 2.1: Short argument"
+echo "Acceptance test 2.1: Shorthand flag"
 call_xkcdget '-r'
 expected=':&a*5wnoz{0tUw#9U}+!s7qdGlqGo9XhHURZz>r1'
 actual=$(tail -1 "$revlist")
 assertEquals "$expected" "$actual"
 
 echo
-echo "Acceptance test 2.2: Long argument and double revocation"
+echo "Acceptance test 2.2: Longhand flag, double revocation"
 call_xkcdget '--revoke'
 expected='([Z>a9^-KV)T&]R(MH41ykWS>JxWBKIu^Nyhxg{)'
 actual=$(tail -1 "$revlist")
