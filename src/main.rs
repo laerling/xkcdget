@@ -15,11 +15,13 @@ const AMOUNT_WORDS: u8 = 4;
 /// Return path to revocation file
 fn get_revocation_filename() -> String {
     let homedir = var("HOME").expect("HOME environment variable unset or invalid");
+    //TODO for 3.0: format!("{}/.xkcdget-revocation", homedir)
     format!("{}/.pwget2-revocation", homedir)
 }
 
 /// Calculate the hash used for revocation.
 fn get_revocation_hash(password_str: &String) -> String {
+    // FIXME in 3.0: Don't encode before hashing (z85-encoding happens in get_scrypt_z85)
     let hash = hex::decode(sha256::digest(password_str)).expect("Cannot hex-decode passwordStr");
     z85::encode(hash)
 }
@@ -96,6 +98,9 @@ fn get_scrypt_z85(domain: String) -> String {
 
     // hash password until one is found that has not been revoked
     let mut password = [0; KEY_LEN];
+    // For now I'm going with the same setting as xkcdget 2.0 to be backwards compatible
+    // 17 is the recommended CPU cost factor as of writing this code
+    // TODO test performance and also test performance of factor 18
     let (log_n, r, p) = (16, 8, 16);
     let scrypt_params = Params::new(log_n, r, p, KEY_LEN).expect("Cannot create scrypt parameters");
     let revoked_pw_hashes: Vec<String> = get_revoked_pw_hashes();
@@ -109,6 +114,7 @@ fn get_scrypt_z85(domain: String) -> String {
             &mut password,
         )
         .unwrap();
+        // FIXME in 3.0: remove unnecessary encoding
         let password_str = z85::encode(password);
 
         // if the password has been revoked do another round, else return it
@@ -133,12 +139,15 @@ fn xkcdget(domain: String) -> String {
     let password_str = get_scrypt_z85(domain);
 
     // choose words
+    // FIXME in 3.0
     let mut words = Vec::new();
     for i in 0..AMOUNT_WORDS {
         let offset = 10 * i as usize;
 
         // z85 consumes 5 bytes at a time and decodes them into 4 bytes (32 bits).
         // decode 64 bits
+        // FIXME: Remove z85 encoding (see above)
+        // FIXME: Use entropy optimally - see branch optimal-entropy-usage!
         let key = z85::decode(&password_str[offset..(offset + 10)])
             .expect("Can't z85-decode password_str");
         assert!(key.len() == 8); // key:[u8;8] would be the bigger hassle
@@ -167,6 +176,13 @@ fn xkcdget(domain: String) -> String {
     // print final password
     let words = words.join("");
     format!("{words}_1")
+}
+
+// TODO remove for 2.1
+/// Generate and print xkcdget pin.
+fn pin(domain: String, digits: usize) {
+    //TODO let pw_scrypt = get_scrypt_z85(domain);
+    todo!("choose digits");
 }
 
 /// Generate and revoke a password
@@ -203,6 +219,20 @@ fn main() {
         Some(arg) => match arg.as_str() {
             // known action flags
             "-r" | "--revoke" => revoke(args.next().unwrap_or_else(get_domain)),
+            // TODO remove for 2.1
+            "-p" | "--pin" => pin(
+                args.next().unwrap_or_else(get_domain),
+                // get possibly supplied number argument for pin length
+                args.next()
+                    .map(|pinlen_arg| {
+                        // check that argument is a number
+                        pinlen_arg
+                            .parse()
+                            .unwrap_or_else(|_| panic!("Argument is not a number: {}", pinlen_arg))
+                    })
+                    .unwrap_or(DEFAULT_PIN_LEN),
+            ),
+
             // not a known action flag, so treat as a domain
             _ => println!("{}", xkcdget(arg)),
         },
