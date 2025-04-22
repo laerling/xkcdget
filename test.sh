@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -30,8 +30,14 @@ function restore {
 # since it can be a symlink, don't use cp, but shell redirection
 revlist=~/.pwget2-revocation
 revlistbackup=$(mktemp)
-echo "Backing up $revlist to $revlistbackup"
-cat "$revlist" > "$revlistbackup"
+revlistexisted=
+if [ -e "$revlist" ]; then
+    revlistexisted=yes
+    echo "Backing up $revlist to $revlistbackup"
+    cat "$revlist" > "$revlistbackup"
+else
+    echo "No revocation list found. Continuing without backup"
+fi
 
 # empty revocation list
 true > "$revlist"
@@ -66,14 +72,14 @@ assertEquals "$expected" "$xkcdget_output"
 echo "Acceptance test 2: Revocation"
 
 echo
-echo "Acceptance test 2.1: Short argument"
+echo "Acceptance test 2.1: Shorthand flag"
 call_xkcdget '-r'
 expected=':&a*5wnoz{0tUw#9U}+!s7qdGlqGo9XhHURZz>r1'
 actual=$(tail -1 "$revlist")
 assertEquals "$expected" "$actual"
 
 echo
-echo "Acceptance test 2.2: Long argument and double revocation"
+echo "Acceptance test 2.2: Longhand flag, double revocation"
 call_xkcdget '--revoke'
 expected='([Z>a9^-KV)T&]R(MH41ykWS>JxWBKIu^Nyhxg{)'
 actual=$(tail -1 "$revlist")
@@ -87,5 +93,10 @@ echo
 # restore #
 ###########
 
-restore
+if [ "$revlistexisted" ]; then
+    restore
+else
+    echo "Deleting temporary revocation list"
+    rm "$revlist"
+fi
 echo
