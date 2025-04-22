@@ -1,24 +1,17 @@
-#![allow(dead_code)]
-#![allow(unreachable_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-
 use rpassword::prompt_password;
 use scrypt::{scrypt, Params};
 use std::env::{args, var};
-use std::fs::{read_to_string, File, OpenOptions};
-use std::io::{stderr, stdin, stdout, BufRead, ErrorKind, IsTerminal, Read, Stdout, Write};
-use std::str::SplitWhitespace;
+use std::fs::{read_to_string, OpenOptions};
+use std::io::{stdin, stdout, BufRead, ErrorKind, IsTerminal, Write};
 
 mod wordlists;
 use wordlists::{ADJECTIVESLIST, NOUNSLIST, VERBSLIST};
 
-const XKCDGET_VERSION: &str = "1.1.0"; // semantic versioning!
+const XKCDGET_VERSION: &str = "1.1.1"; // semantic versioning!
 const NOUNSLIST_LEN: usize = 1525;
 const ADJECTIVESLIST_LEN: usize = 528;
 const VERBSLIST_LEN: usize = 1011;
 const KEY_LEN: usize = 32;
-const DEFAULT_PIN_LEN: usize = 4;
 
 /// Return path to revocation file
 fn get_revocation_filename() -> String {
@@ -150,18 +143,14 @@ fn choose_word_from_list(wordlist: &[&str], seed: &str) -> String {
 
 /// Generate and print xkcdget password.
 fn xkcdget(domain: String) -> String {
-    let password_str = get_scrypt_z85(domain);
-
     // assert word list lengths so that we don't forget to change this code when
     // word list length changes.
     assert!(NOUNSLIST.len() == NOUNSLIST_LEN);
     assert!(ADJECTIVESLIST.len() == ADJECTIVESLIST_LEN);
     assert!(VERBSLIST.len() == VERBSLIST_LEN);
 
-    // calculate wordlist entropy - the amount of bits needed to select one word
-    let bits_per_word_nouns = (NOUNSLIST_LEN as f32).log2();
-    let bits_per_word_adjectives = (ADJECTIVESLIST_LEN as f32).log2();
-    let bits_per_word_verbs = (VERBSLIST_LEN as f32).log2();
+    // get password bits
+    let password_str = get_scrypt_z85(domain);
 
     // choose words and return password
     format!(
