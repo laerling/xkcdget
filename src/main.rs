@@ -1,22 +1,16 @@
-#![allow(dead_code)]
-#![allow(unreachable_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-
 use rpassword::prompt_password;
 use scrypt::{scrypt, Params};
 use std::env::{args, var};
-use std::fs::{read_to_string, File, OpenOptions};
-use std::io::{stderr, stdin, stdout, BufRead, ErrorKind, IsTerminal, Read, Stdout, Write};
-use std::str::SplitWhitespace;
+use std::fs::{read_to_string, OpenOptions};
+use std::io::{stdin, stdout, BufRead, ErrorKind, IsTerminal, Write};
 
 mod wordlist;
 use wordlist::WORDLIST;
 
-const XKCDGET_VERSION: &str = "2.1.0"; // semantic versioning!
+const XKCDGET_VERSION: &str = "2.1.1"; // semantic versioning!
 const WORDLIST_LEN: usize = 2048;
 const KEY_LEN: usize = 32;
-const DEFAULT_PIN_LEN: usize = 4;
+const AMOUNT_WORDS: u8 = 4;
 
 /// Return path to revocation file
 fn get_revocation_filename() -> String {
@@ -28,6 +22,16 @@ fn get_revocation_filename() -> String {
 fn get_revocation_hash(password_str: &String) -> String {
     let hash = hex::decode(sha256::digest(password_str)).expect("Cannot hex-decode passwordStr");
     z85::encode(hash)
+}
+
+/// calculate and print password entropy
+fn print_entropy() {
+    let bits_per_word = (WORDLIST_LEN as f32).log2();
+    eprintln!(
+        "Entropy: {} bits ({} bits per word)",
+        bits_per_word * AMOUNT_WORDS as f32,
+        bits_per_word
+    );
 }
 
 /// Interactively ask for a domain and return it.
@@ -121,19 +125,17 @@ fn get_scrypt_z85(domain: String) -> String {
 
 /// Generate and print xkcdget password.
 fn xkcdget(domain: String) -> String {
-    let password_str = get_scrypt_z85(domain);
-
     // assert word list length so that we don't forget to change this code when
     // word list length changes.
     assert!(WORDLIST.len() == WORDLIST_LEN);
 
-    // calculate wordlist entropy - the amount of bits needed to select one word
-    let bits_per_word = (WORDLIST_LEN as f32).log2();
+    // get password bits
+    let password_str = get_scrypt_z85(domain);
 
     // choose words
     let mut words = Vec::new();
-    for i in 0..4 {
-        let offset = 10 * i;
+    for i in 0..AMOUNT_WORDS {
+        let offset = 10 * i as usize;
 
         // z85 consumes 5 bytes at a time and decodes them into 4 bytes (32 bits).
         // decode 64 bits
@@ -191,6 +193,7 @@ fn revoke(domain: String) {
 /// Dispatch according to program arguments.
 fn main() {
     eprintln!("xkcdget {XKCDGET_VERSION}");
+    print_entropy();
     let mut args = args();
     match args.nth(1) {
         // no argument = interactive mode
