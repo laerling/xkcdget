@@ -11,19 +11,17 @@ const XKCDGET_VERSION: &str = "2.1.1"; // semantic versioning!
 const WORDLIST_LEN: usize = 2048;
 const KEY_LEN: usize = 32;
 const AMOUNT_WORDS: u8 = 4;
+const DEFAULT_PIN_LEN: u8 = 4;
 
 /// Return path to revocation file
 fn get_revocation_filename() -> String {
     let homedir = var("HOME").expect("HOME environment variable unset or invalid");
-    //TODO for 3.0: format!("{}/.xkcdget-revocation", homedir)
-    format!("{}/.pwget2-revocation", homedir)
+    format!("{}/.xkcdget-revocation", homedir)
 }
 
 /// Calculate the hash used for revocation.
-fn get_revocation_hash(password_str: &String) -> String {
-    // FIXME in 3.0: Don't encode before hashing (z85-encoding happens in get_scrypt_z85)
-    let hash = hex::decode(sha256::digest(password_str)).expect("Cannot hex-decode passwordStr");
-    z85::encode(hash)
+fn get_revocation_hash(key: &[u8; KEY_LEN]) -> String {
+    sha256::digest(key)
 }
 
 /// calculate and print password entropy
@@ -56,7 +54,7 @@ fn get_domain() -> String {
 }
 
 /// Read hashes of passwords that have been revoked.
-fn get_revoked_pw_hashes() -> Vec<String> {
+fn get_revocation_hashes() -> Vec<String> {
     // read file
     let revocation_filename = get_revocation_filename();
     let file_content = read_to_string(&revocation_filename).unwrap_or_else(|e| {
@@ -93,40 +91,38 @@ fn get_master_password() -> String {
 }
 
 /// Query for the master password and calculate salted hash of it and the domain.
-fn get_scrypt_z85(domain: String) -> String {
+fn get_key(domain: String) -> [u8; KEY_LEN] {
     let master_password = get_master_password();
 
-    // hash password until one is found that has not been revoked
-    let mut password = [0; KEY_LEN];
-    // For now I'm going with the same setting as xkcdget 2.0 to be backwards compatible
-    // 17 is the recommended CPU cost factor as of writing this code
-    // TODO test performance and also test performance of factor 18
-    let (log_n, r, p) = (16, 8, 16);
+    // generate key until one is found that has not been revoked
+    let mut key = [0; KEY_LEN];
+    // TODO 17 is the recommended CPU cost factor as of writing this code.
+    // TODO test performance and also test performance of factor 18.
+    // TODO Also check parameters for memory usage.
+    let (log_n, r, p) = (17, 8, 16);
     let scrypt_params = Params::new(log_n, r, p, KEY_LEN).expect("Cannot create scrypt parameters");
-    let revoked_pw_hashes: Vec<String> = get_revoked_pw_hashes();
+    let revocation_hashes = get_revocation_hashes();
     for iteration in 0.. {
         // get password for this iteration
-        let salt = format!("{}:{}", iteration, domain);
+        let salt = format!("{}:{}", domain, iteration);
         scrypt(
             master_password.as_bytes(),
             salt.as_bytes(),
             &scrypt_params,
-            &mut password,
+            &mut key,
         )
-        .unwrap();
-        // FIXME in 3.0: remove unnecessary encoding
-        let password_str = z85::encode(password);
+        .expect("scrypt failed");
 
-        // if the password has been revoked do another round, else return it
-        let pw_revocation_hash = get_revocation_hash(&password_str);
-        if revoked_pw_hashes.contains(&pw_revocation_hash) {
-            eprintln!("hash:{} is revoked", pw_revocation_hash);
+        // if the key has been revoked do another round, else return it
+        let revocation_hash = get_revocation_hash(&key);
+        if revocation_hashes.contains(&revocation_hash) {
+            eprintln!("Was revoked: {}", revocation_hash);
         } else {
-            return password_str;
+            return key;
         }
     }
 
-    unreachable!("The unconditional loop above must return the first non-revoked password hash");
+    unreachable!("The unconditional loop above must return the first non-revoked key");
 }
 
 /// Generate and print xkcdget password.
@@ -136,28 +132,21 @@ fn xkcdget(domain: String) -> String {
     assert!(WORDLIST.len() == WORDLIST_LEN);
 
     // get password bits
-    let password_str = get_scrypt_z85(domain);
+    let key: [u8; KEY_LEN] = get_key(domain);
 
     // choose words
     // FIXME in 3.0
     let mut words = Vec::new();
-    for i in 0..AMOUNT_WORDS {
-        let offset = 10 * i as usize;
+    for word_i in 0..AMOUNT_WORDS {
+        let offset = word_i as usize * 8;
 
-        // z85 consumes 5 bytes at a time and decodes them into 4 bytes (32 bits).
-        // decode 64 bits
-        // FIXME: Remove z85 encoding (see above)
         // FIXME: Use entropy optimally - see branch optimal-entropy-usage!
-        let key = z85::decode(&password_str[offset..(offset + 10)])
-            .expect("Can't z85-decode password_str");
-        assert!(key.len() == 8); // key:[u8;8] would be the bigger hassle
+        let word_key: &[u8] = &key[offset..(offset + 8)];
+        assert!(word_key.len() == 8); // key:[u8;8] would be the bigger hassle
 
         // read decoded bytes into u64
-        let int_key: u64 = u64::from_le_bytes(
-            key.as_slice()[0..8]
-                .try_into()
-                .expect("Cannot convert slice to u64"),
-        );
+        let int_key: u64 =
+            u64::from_le_bytes(word_key.try_into().expect("Cannot convert slice to u64"));
 
         // choose word
         let index = (int_key as usize) % WORDLIST_LEN;
@@ -178,17 +167,16 @@ fn xkcdget(domain: String) -> String {
     format!("{words}_1")
 }
 
-// TODO remove for 2.1
 /// Generate and print xkcdget pin.
-fn pin(domain: String, digits: usize) {
-    //TODO let pw_scrypt = get_scrypt_z85(domain);
+fn pin(domain: String, digits: u8) {
+    let key = get_key(domain);
     todo!("choose digits");
 }
 
 /// Generate and revoke a password
 fn revoke(domain: String) {
-    let pw_scrypt = get_scrypt_z85(domain);
-    let pw_revocation_hash = get_revocation_hash(&pw_scrypt);
+    let key = get_key(domain);
+    let pw_revocation_hash = get_revocation_hash(&key);
     eprintln!("Revoking hash:{}", pw_revocation_hash);
 
     // add hash to revocation file
@@ -219,7 +207,6 @@ fn main() {
         Some(arg) => match arg.as_str() {
             // known action flags
             "-r" | "--revoke" => revoke(args.next().unwrap_or_else(get_domain)),
-            // TODO remove for 2.1
             "-p" | "--pin" => pin(
                 args.next().unwrap_or_else(get_domain),
                 // get possibly supplied number argument for pin length

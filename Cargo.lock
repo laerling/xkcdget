@@ -327,15 +327,7 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 name = "xkcdget"
 version = "0.1.0"
 dependencies = [
- "hex",
  "rpassword",
  "scrypt",
  "sha256",
- "z85",
 ]
-
-[[package]]
-name = "z85"
-version = "3.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b3a41ce106832b4da1c065baa4c31cf640cf965fa1483816402b7f6b96f0a64"
