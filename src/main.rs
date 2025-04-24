@@ -1,5 +1,6 @@
 use rpassword::prompt_password;
 use scrypt::{scrypt, Params};
+use std::cmp::max;
 use std::env::{args, var};
 use std::fs::{read_to_string, OpenOptions};
 use std::io::{stdin, stdout, BufRead, ErrorKind, IsTerminal, Write};
@@ -9,7 +10,6 @@ use wordlist::WORDLIST;
 
 const XKCDGET_VERSION: &str = "2.1.1"; // semantic versioning!
 const WORDLIST_LEN: usize = 2048;
-const KEY_LEN: usize = 32;
 const AMOUNT_WORDS: u8 = 4;
 const DEFAULT_PIN_LEN: u8 = 4;
 
@@ -20,7 +20,7 @@ fn get_revocation_filename() -> String {
 }
 
 /// Calculate the hash used for revocation.
-fn get_revocation_hash(key: &[u8; KEY_LEN]) -> String {
+fn get_revocation_hash(key: &[u8]) -> String {
     sha256::digest(key)
 }
 
@@ -91,16 +91,34 @@ fn get_master_password() -> String {
 }
 
 /// Query for the master password and calculate salted hash of it and the domain.
-fn get_key(domain: String) -> [u8; KEY_LEN] {
+fn get_key(domain: String) -> Vec<u8> {
+    // define scrypt parameters
+    let log_n = 17; // FIXME experiment - it should take >1s on my beefy PC, but <20s on phone
+                    // TODO Also check parameters for memory usage.
+    let (r, p) = (8, 16);
+
+    // calculate amount of bytes needed
+    let bits_per_word = (WORDLIST_LEN as f32).log2();
+    let bytes_per_word = (bits_per_word / 8.0).ceil() as usize;
+    let key_len = max(bytes_per_word * AMOUNT_WORDS as usize, 10);
+    println!("bits per word:  {}", bits_per_word);
+    println!("bytes per word: {}", bytes_per_word);
+    println!("key length:     {}", key_len);
+
+    // check scrypt parameters
+    assert!(log_n >= 17, "It is recommended to set log_n to at least 17");
+    assert!(key_len >= 10, "Key length must be 10 or more bytes");
+    assert!(key_len <= 64, "Key length must be 64 or less bytes");
+    let scrypt_params = Params::new(log_n, r, p, key_len).expect("Cannot create scrypt parameters");
+
+    // get master password
     let master_password = get_master_password();
 
+    // vector to contain key
+    let mut key = Vec::new();
+    key.resize(key_len, 0);
+
     // generate key until one is found that has not been revoked
-    let mut key = [0; KEY_LEN];
-    // TODO 17 is the recommended CPU cost factor as of writing this code.
-    // TODO test performance and also test performance of factor 18.
-    // TODO Also check parameters for memory usage.
-    let (log_n, r, p) = (17, 8, 16);
-    let scrypt_params = Params::new(log_n, r, p, KEY_LEN).expect("Cannot create scrypt parameters");
     let revocation_hashes = get_revocation_hashes();
     for iteration in 0.. {
         // get password for this iteration
@@ -132,10 +150,14 @@ fn xkcdget(domain: String) -> String {
     assert!(WORDLIST.len() == WORDLIST_LEN);
 
     // get password bits
-    let key: [u8; KEY_LEN] = get_key(domain);
+    let key = get_key(domain);
 
     // choose words
     // FIXME in 3.0
+    // TODO We cannot use the bits/bytes directly when the wordlist length is not a power of two.
+    //      Therefore my idea is to use the bytes as seed for a PRNG that produces an even
+    //      distribution. It's important though that the PRNG works the exact same on all
+    //      platforms!
     let mut words = Vec::new();
     for word_i in 0..AMOUNT_WORDS {
         let offset = word_i as usize * 8;
