@@ -8,10 +8,23 @@ use std::io::{stdin, stdout, BufRead, ErrorKind, IsTerminal, Write};
 mod wordlist;
 use wordlist::WORDLIST;
 
+// program version - adapt after every change!
 const XKCDGET_VERSION: &str = "2.1.1"; // semantic versioning!
+
+// utility constants
+const USIZE_BYTES: usize = usize::BITS as usize / 8;
+const DEBUG: u8 = 0;
+
+// parameters
 const WORDLIST_LEN: usize = 2048;
-const AMOUNT_WORDS: u8 = 4;
+const AMOUNT_WORDS: u8 = 5;
 const DEFAULT_PIN_LEN: u8 = 4;
+
+/// calculate amount of bytes needed to choose one word from the wordlist
+fn needed_bytes_per_word() -> usize {
+    let needed_bits = usize::BITS - (WORDLIST_LEN-1).leading_zeros();
+    (needed_bits as usize + 7) / 8
+}
 
 /// Return path to revocation file
 fn get_revocation_filename() -> String {
@@ -26,6 +39,8 @@ fn get_revocation_hash(key: &[u8]) -> String {
 
 /// calculate and print password entropy
 fn print_entropy() {
+    // we can't use the bitshift method because we actually want to know fractional bits here, not
+    // the amount of bits needed to choose a word.
     let bits_per_word = (WORDLIST_LEN as f32).log2();
     eprintln!(
         "Entropy: {} bits ({} bits per word)",
@@ -91,28 +106,20 @@ fn get_master_password() -> String {
 }
 
 /// Query for the master password and calculate salted hash of it and the domain.
-fn get_key(domain: String) -> Vec<u8> {
+fn get_key(domain: &String, master_pw: &String) -> Vec<u8> {
     // define scrypt parameters
     let log_n = 17; // FIXME experiment - it should take >1s on my beefy PC, but <20s on phone
                     // TODO Also check parameters for memory usage.
     let (r, p) = (8, 16);
 
-    // calculate amount of bytes needed
-    let bits_per_word = (WORDLIST_LEN as f32).log2();
-    let bytes_per_word = (bits_per_word / 8.0).ceil() as usize;
-    let key_len = max(bytes_per_word * AMOUNT_WORDS as usize, 10);
-    println!("bits per word:  {}", bits_per_word);
-    println!("bytes per word: {}", bytes_per_word);
-    println!("key length:     {}", key_len);
+    // calculate amount of bytes needed for key
+    let key_len = max(needed_bytes_per_word() * AMOUNT_WORDS as usize, 10);
 
     // check scrypt parameters
     assert!(log_n >= 17, "It is recommended to set log_n to at least 17");
     assert!(key_len >= 10, "Key length must be 10 or more bytes");
     assert!(key_len <= 64, "Key length must be 64 or less bytes");
     let scrypt_params = Params::new(log_n, r, p, key_len).expect("Cannot create scrypt parameters");
-
-    // get master password
-    let master_password = get_master_password();
 
     // vector to contain key
     let mut key = Vec::new();
@@ -124,7 +131,7 @@ fn get_key(domain: String) -> Vec<u8> {
         // get password for this iteration
         let salt = format!("{}:{}", domain, iteration);
         scrypt(
-            master_password.as_bytes(),
+            master_pw.as_bytes(),
             salt.as_bytes(),
             &scrypt_params,
             &mut key,
@@ -145,33 +152,154 @@ fn get_key(domain: String) -> Vec<u8> {
 
 /// Generate and print xkcdget password.
 fn xkcdget(domain: String) -> String {
+
     // assert word list length so that we don't forget to change this code when
     // word list length changes.
+    // FIXME replace wordlist with a longer one
     assert!(WORDLIST.len() == WORDLIST_LEN);
 
-    // get password bits
-    let key = get_key(domain);
+    // Problem:
+    // Mapping [1,2^b] (where b is an arbitrary amount of bits from the scrypt-derived key) to [1,N]
+    // (where N is the amount of entries in the wordlist and N<=2^b) can only result in a uniform
+    // probability distribution if N is a power of two. Otherwise we need to
+    // 1) either map the remaining 2^b mod N preimage values to 2^b mod N < N wordlist entries,
+    //    which results in some entries having a higher probability of being chosen than others,
+    // 2) or we need to "reroll" the value in [1,2^b] until it lies within [1,N].
+    //
+    // Option 1 always produces a non-uniform probability distribution over [1,N], but the
+    // difference between the probability of the 2^b mod N values and the probability of the others
+    // can be minimized by choosing a higher value for b.
+    // => 2^b mod N values will have a probability of ceil(2^b/N)/(2^b)
+    // => the other N - 2^b mod N values will have a probability floor(2^b/N)/(2^b)
+    // E. g. for b=12 and N=2047 the probability difference is ~0.024%pt, for b=16 just ~0.0015%pt
+    //
+    // Option 2 can produce a uniform probability distribution over [1,N], but only when the PRNG
+    // used for "rerolling" the bits does not only depend of the bits themselves. Otherwise (that
+    // is, if the result of the reroll depends only on the current bits) all values in [2^b-(2^b
+    // mod N)+1, 2^b] will always be mapped to the same values in [1,N], which is just option 1
+    // again, but with a different distribution.
+    // Therefore to realize option 2, the PRNG must depend on both the bits of the current roll as
+    // well as other values - namely the domain, master password, iteration, word index, and the
+    // scrypt-derived key. Also, the PRNG must have the property that the change of just one bit in
+    // these input data sources must result in a 50% flip probability for every output bit. These
+    // properties are fulfilled by hash functions.
+    //
+    // One might think that this is just option 1 but with a different distribution of mappings
+    // from [2^b-(2^b mod N)+1, 2^b] to [1,N]. That is correct for one single roll. But since the
+    // distribution itself is different for every roll, it averages out - since every wordlist
+    // entry can either be part of the distribution (in 2^b mod N cases) or not (in all other
+    // cases), these two different probabilities, weighted by the amount of corresponding cases,
+    // average to 1/N.
+
+    // make sure the amount of bytes needed to choose a word fit into a usize value
+    let bytes_per_word = needed_bytes_per_word();
+    assert!(bytes_per_word <= USIZE_BYTES);
+
+    // get scrypt-derived key
+    let master_pw = get_master_password();
+    let key = get_key(&domain, &master_pw);
+    if DEBUG >= 1 {
+        println!("scrypt-derived key == {:?}", key);
+    }
 
     // choose words
-    // FIXME in 3.0
-    // TODO We cannot use the bits/bytes directly when the wordlist length is not a power of two.
-    //      Therefore my idea is to use the bytes as seed for a PRNG that produces an even
-    //      distribution. It's important though that the PRNG works the exact same on all
-    //      platforms!
     let mut words = Vec::new();
     for word_i in 0..AMOUNT_WORDS {
-        let offset = word_i as usize * 8;
 
-        // FIXME: Use entropy optimally - see branch optimal-entropy-usage!
-        let word_key: &[u8] = &key[offset..(offset + 8)];
-        assert!(word_key.len() == 8); // key:[u8;8] would be the bigger hassle
+        // copy needed amount of bytes from scrypt-derived key to transient word key
+        let offset = word_i as usize * bytes_per_word;
+        let mut word_key: [u8; USIZE_BYTES] = [0; USIZE_BYTES];
+        word_key[USIZE_BYTES-bytes_per_word..].copy_from_slice(
+            &key[offset..(offset + bytes_per_word)]);
+        if DEBUG >= 1 {
+            println!("word_key == {:?}", word_key);
+        }
 
-        // read decoded bytes into u64
-        let int_key: u64 =
-            u64::from_le_bytes(word_key.try_into().expect("Cannot convert slice to u64"));
+        // recalculate index until it's within the desired range
+        let mut index = usize::from_be_bytes(word_key);
+        let mut iteration: u64 = 0; // hash iterations
+        let mut tries: u64 = 0; // index decoding tries
+        let mut hash: Vec<u8> = Vec::new();
+        loop {
+            if DEBUG >= 2 {
+                println!("  index == {}", index);
+            }
+
+            // it's in the needed range
+            if index < WORDLIST_LEN {
+                break;
+            }
+
+            // Try for another.
+            // even after just a thousand iterations it's astronomically improbable for the result
+            // to not have landed in the needed range at least once
+            iteration += 1;
+            assert!(iteration < 1000);
+            if DEBUG >= 1 {
+                println!(" Iteration {}", iteration);
+            }
+
+            // it's not in the needed range - reroll, that is, rehash with all variable inputs
+            let mut hash_inputs: Vec<u8> = Vec::with_capacity(256);
+            // last hash
+            hash_inputs.extend_from_slice(&hash);
+            // current word key
+            hash_inputs.extend_from_slice(&word_key);
+            // complete scrypt-derived key
+            hash_inputs.extend_from_slice(key.as_slice());
+            // domain
+            hash_inputs.extend_from_slice(domain.as_bytes());
+            // master password
+            hash_inputs.extend_from_slice(master_pw.as_bytes());
+            // current iteration
+            hash_inputs.extend_from_slice(iteration.to_string().as_bytes());
+            // word position
+            hash_inputs.push(word_i);
+
+            // hash all variable inputs from above
+            if DEBUG >= 2 {
+                println!("  hash_inputs == {:?}", hash_inputs);
+            }
+            let hash_hex = sha256::digest(hash_inputs);
+            if DEBUG >= 2 {
+                println!("  hash == {}", hash_hex);
+            }
+            hash = hex::decode(hash_hex).expect(
+                "Cannot decode hexadecimal representation of sha256 hash");
+            if DEBUG >= 2 {
+                println!("  hash == {:?}", hash);
+            }
+
+            // iterate over bytes of hash
+            let n_chunks = 256 / 8 / bytes_per_word;
+            for chunk_i in 0..n_chunks {
+                tries += 1;
+                let offset = chunk_i * bytes_per_word;
+                let word_key_slice = &hash[offset..(offset + bytes_per_word)];
+                if DEBUG >= 2 {
+                    println!("  word_key_slice == {:?}", word_key_slice);
+                }
+
+                // copy needed amount of bytes from hash to word_key
+                word_key = [0; USIZE_BYTES];
+                word_key[USIZE_BYTES-bytes_per_word..].copy_from_slice(word_key_slice);
+
+                // calculate index from word_key and check
+                index = usize::from_be_bytes(word_key);
+                if DEBUG >= 2 {
+                    println!("  index == {}", index);
+                }
+                if index < WORDLIST_LEN {
+                    break;
+                }
+            }
+        }
 
         // choose word
-        let index = (int_key as usize) % WORDLIST_LEN;
+        assert!(index < WORDLIST_LEN);
+        if DEBUG >= 1 {
+            println!("Index fits after {tries} tries ({iteration} iterations)");
+        }
         let word_uncap = WORDLIST[index];
 
         // capitalize word
@@ -190,14 +318,16 @@ fn xkcdget(domain: String) -> String {
 }
 
 /// Generate and print xkcdget pin.
-fn pin(domain: String, digits: u8) {
-    let key = get_key(domain);
+fn pin(domain: String, _digits: u8) {
+    let master_pw = get_master_password();
+    let _key = get_key(&domain, &master_pw);
     todo!("choose digits");
 }
 
 /// Generate and revoke a password
 fn revoke(domain: String) {
-    let key = get_key(domain);
+    let master_pw = get_master_password();
+    let key = get_key(&domain, &master_pw);
     let pw_revocation_hash = get_revocation_hash(&key);
     eprintln!("Revoking hash:{}", pw_revocation_hash);
 
@@ -219,7 +349,9 @@ fn revoke(domain: String) {
 /// Dispatch according to program arguments.
 fn main() {
     eprintln!("xkcdget {XKCDGET_VERSION}");
-    print_entropy();
+    if DEBUG >= 1 {
+        print_entropy();
+    }
     let mut args = args();
     match args.nth(1) {
         // no argument = interactive mode
