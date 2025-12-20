@@ -9,7 +9,7 @@ mod wordlist;
 use wordlist::WORDLIST;
 
 // program version - adapt after every change!
-const XKCDGET_VERSION: &str = "2.1.1"; // semantic versioning!
+const XKCDGET_VERSION: &str = "3.0.0-alpha.1"; // semantic versioning!
 
 // utility constants
 const USIZE_BYTES: usize = usize::BITS as usize / 8;
@@ -19,6 +19,7 @@ const DEBUG: u8 = 0;
 const WORDLIST_LEN: usize = 2048;
 const AMOUNT_WORDS: u8 = 5;
 const DEFAULT_PIN_LEN: u8 = 4;
+const REVOCATION_LIST_FILENAME: &str = ".xkcdget-revocation";
 
 /// calculate amount of bytes needed to choose one word from the wordlist
 fn needed_bytes_per_word() -> usize {
@@ -29,7 +30,7 @@ fn needed_bytes_per_word() -> usize {
 /// Return path to revocation file
 fn get_revocation_filename() -> String {
     let homedir = var("HOME").expect("HOME environment variable unset or invalid");
-    format!("{}/.xkcdget-revocation", homedir)
+    format!("{}/{}", homedir, REVOCATION_LIST_FILENAME)
 }
 
 /// Calculate the hash used for revocation.
