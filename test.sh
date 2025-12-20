@@ -2,8 +2,14 @@
 
 set -euo pipefail
 
-BIN="${1:-xkcdget}"
-echo
+REVLIST_NAME=.xkcdget-revocation
+BIN="${1:-target/release/xkcdget}"
+
+BIN="$(realpath "$BIN")"
+if ! [ -x "$BIN" ]; then
+    echo "binary doesn't exist or isn't executable: $BIN" >/dev/stderr
+    exit 1
+fi
 echo "Running acceptance test on binary $BIN"
 
 function call_xkcdget {
@@ -21,25 +27,13 @@ function assertEquals {
     fi
 }
 
-function restore {
-    echo "restoring $revlist from $revlistbackup"
-    cat "$revlistbackup" > "$revlist"
-}
+# make temporary directory for revocation list
+revlistdir="$(mktemp -d)"
+export HOME="$revlistdir"
 
-# backup revocation list
-# since it can be a symlink, don't use cp, but shell redirection
-revlist=~/.pwget2-revocation
-revlistbackup=$(mktemp)
-revlistexisted=
-if [ -e "$revlist" ]; then
-    revlistexisted=yes
-    echo "Backing up $revlist to $revlistbackup"
-    cat "$revlist" > "$revlistbackup"
-else
-    echo "No revocation list found. Continuing without backup"
-fi
-
-# empty revocation list
+# initialize empty revocation list
+revlist="$revlistdir/$REVLIST_NAME"
+echo "Using revocation list: $revlist"
 true > "$revlist"
 
 
@@ -47,8 +41,6 @@ true > "$revlist"
 #########
 # tests #
 #########
-
-trap restore ERR
 
 password='password'
 domain='domain'
@@ -84,19 +76,3 @@ call_xkcdget '--revoke'
 expected='([Z>a9^-KV)T&]R(MH41ykWS>JxWBKIu^Nyhxg{)'
 actual=$(tail -1 "$revlist")
 assertEquals "$expected" "$actual"
-
-
-echo
-echo
-
-###########
-# restore #
-###########
-
-if [ "$revlistexisted" ]; then
-    restore
-else
-    echo "Deleting temporary revocation list"
-    rm "$revlist"
-fi
-echo

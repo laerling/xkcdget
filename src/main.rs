@@ -7,15 +7,16 @@ use std::io::{stdin, stdout, BufRead, ErrorKind, IsTerminal, Write};
 mod wordlist;
 use wordlist::WORDLIST;
 
-const XKCDGET_VERSION: &str = "2.1.1"; // semantic versioning!
+const XKCDGET_VERSION: &str = "2.2.0"; // semantic versioning!
 const WORDLIST_LEN: usize = 2048;
 const KEY_LEN: usize = 32;
 const AMOUNT_WORDS: u8 = 4;
+const REVOCATION_LIST_FILENAME: &str = ".xkcdget-revocation";
 
 /// Return path to revocation file
 fn get_revocation_filename() -> String {
     let homedir = var("HOME").expect("HOME environment variable unset or invalid");
-    format!("{}/.pwget2-revocation", homedir)
+    format!("{}/{}", homedir, REVOCATION_LIST_FILENAME)
 }
 
 /// Calculate the hash used for revocation.
